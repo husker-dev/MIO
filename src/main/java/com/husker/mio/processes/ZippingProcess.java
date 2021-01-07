@@ -7,43 +7,41 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class ZippingProcess extends MIOProcess<ZippingProcess> {
 
-    private File toZip, destination;
+    private File[] toZip;
+    private File destination;
     private ZipEntry currentZipEntry;
 
     public ZippingProcess(){
     }
 
-    public ZippingProcess(File toZip){
+    public ZippingProcess(File... toZip){
         this.toZip = toZip;
-        this.destination = FSUtils.setExtension(toZip, "zip");
+        this.destination = FSUtils.setExtension(toZip[0], "zip");
     }
 
-    public ZippingProcess(File toZip, File dest){
+    public ZippingProcess(File[] toZip, File dest){
         this.toZip = toZip;
         this.destination = dest;
     }
 
-    public ZippingProcess(String toZip){
-        this(new File(toZip));
+    public ZippingProcess(String... toZip){
+        this(FSUtils.stringToFiles(toZip));
     }
 
-    public ZippingProcess(String toZip, String dest){
-        this(new File(toZip), new File(dest));
+    public ZippingProcess(String[] toZip, String dest){
+        this(FSUtils.stringToFiles(toZip), new File(dest));
     }
 
-    public ZippingProcess setToZip(File file){
+    public ZippingProcess setToZip(File[] file){
         toZip = file;
         if(destination == null)
-            destination = FSUtils.setExtension(toZip, "zip");
+            destination = FSUtils.setExtension(toZip[0], "zip");
         return this;
     }
 
@@ -60,61 +58,30 @@ public class ZippingProcess extends MIOProcess<ZippingProcess> {
     }
 
     protected void run() throws Exception {
-        setFullSize(FSUtils.getFileSize(toZip));
+        long fullSize = 0;
+        for(File file : toZip)
+            fullSize += FSUtils.getFileSize(file);
+        setFullSize(fullSize);
 
-        FileOutputStream fos = new FileOutputStream(destination);
-        ZipOutputStream zipOut = new ZipOutputStream(fos);
+        safeStream(new ZipOutputStream(new FileOutputStream(destination)), stream -> {
+            for(File file : toZip)
+                addToArchive(stream, file);
+        });
+    }
 
-        List<File> files = FSUtils.getFileTree(toZip);
+    private void addToArchive(ZipOutputStream zipOut, File toZip) throws Exception {
+        List<File> files = FSUtils.getFileTree(toZip, true);
         for(File file : files){
             checkForActive();
 
-            ZipEntry zipEntry;
+            String relativePath = file.getAbsolutePath().replace(new File(toZip.getAbsolutePath()).getParentFile().getAbsolutePath() + File.separator, "");
+            zipOut.putNextEntry(currentZipEntry = new ZipEntry(relativePath + (file.isDirectory() ? File.separator : "")));
 
-            if (file.isFile()) {
-                try(FileInputStream fis = new FileInputStream(file)) {
-                    String relativePath = file.getName();
-                    if (toZip.isDirectory())
-                        relativePath = file.getAbsolutePath().replace(toZip.getAbsolutePath() + File.separator, "");
+            if (file.isFile())
+                copyStreamData(new FileInputStream(file), zipOut, true, false);
 
-                    zipEntry = new ZipEntry(relativePath);
-                    this.currentZipEntry = zipEntry;
-                    zipOut.putNextEntry(zipEntry);
-                    byte[] buffer = new byte[getBufferSize()];
-                    int length;
-                    while ((length = fis.read(buffer)) >= 0) {
-                        checkForActive();
-                        zipOut.write(buffer, 0, length);
-                        addCurrent(length);
-                    }
-                }
-            } else {
-                zipEntry = new ZipEntry(file.getName() + "/");
-                zipOut.putNextEntry(zipEntry);
-            }
-            applyAttributes(zipEntry, file);
+            FSUtils.copyAttributes(file, currentZipEntry);
             zipOut.closeEntry();
-        }
-        zipOut.close();
-        fos.close();
-    }
-
-    private void applyAttributes(ZipEntry entry, File file){
-        try {
-            while (true) {
-                BasicFileAttributes attributes = Files.readAttributes(Paths.get(file.getAbsolutePath()), BasicFileAttributes.class);
-                entry.setCreationTime(attributes.creationTime());
-                entry.setLastAccessTime(attributes.lastAccessTime());
-                entry.setLastModifiedTime(attributes.lastModifiedTime());
-
-                if ((attributes.creationTime() == null || attributes.creationTime().toMillis() == entry.getCreationTime().toMillis()) &&
-                        (attributes.lastAccessTime() == null || attributes.lastAccessTime().toMillis() == entry.getLastAccessTime().toMillis()) &&
-                        (attributes.lastModifiedTime() == null || attributes.lastModifiedTime().toMillis() == entry.getLastModifiedTime().toMillis())
-                )
-                    break;
-            }
-        }catch (Exception ex){
-            ex.printStackTrace();
         }
     }
 

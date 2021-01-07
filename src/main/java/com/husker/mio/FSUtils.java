@@ -3,6 +3,7 @@ package com.husker.mio;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,6 +82,32 @@ public class FSUtils {
             try {
                 Files.delete(Paths.get(file.getAbsolutePath()));
             }catch (Exception ignored){}
+        }
+    }
+
+    public static File[] stringToFiles(String... paths){
+        File[] files = new File[paths.length];
+        for(int i = 0; i < paths.length; i++)
+            files[i] = new File(paths[i]);
+        return files;
+    }
+
+    public static void copyAttributes(File from, ZipEntry to){
+        try {
+            while (true) {
+                BasicFileAttributes attributes = Files.readAttributes(Paths.get(from.getAbsolutePath()), BasicFileAttributes.class);
+                to.setCreationTime(attributes.creationTime());
+                to.setLastAccessTime(attributes.lastAccessTime());
+                to.setLastModifiedTime(attributes.lastModifiedTime());
+
+                if ((attributes.creationTime() == null || attributes.creationTime().toMillis() == to.getCreationTime().toMillis()) &&
+                        (attributes.lastAccessTime() == null || attributes.lastAccessTime().toMillis() == to.getLastAccessTime().toMillis()) &&
+                        (attributes.lastModifiedTime() == null || attributes.lastModifiedTime().toMillis() == to.getLastModifiedTime().toMillis())
+                )
+                    break;
+            }
+        }catch (Exception ex){
+            ex.printStackTrace();
         }
     }
 }

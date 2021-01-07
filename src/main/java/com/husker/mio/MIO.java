@@ -8,6 +8,10 @@ import java.net.URL;
 
 public class MIO {
 
+    public static void zip(File[] toZip, File destination) throws Exception {
+        new ZippingProcess(toZip, destination).startSync();
+    }
+
     public static void zip(File toZip, File destination) throws Exception {
         new ZippingProcess(toZip, destination).startSync();
     }
@@ -16,11 +20,19 @@ public class MIO {
         new ZippingProcess(toZip).startSync();
     }
 
+    public static void zip(File[] toZip) throws Exception {
+        new ZippingProcess(toZip).startSync();
+    }
+
+    public static void zip(String[] toZip) throws Exception {
+        new ZippingProcess(toZip).startSync();
+    }
+
     public static void zip(String toZip) throws Exception {
         new ZippingProcess(toZip).startSync();
     }
 
-    public static void zip(String toZip, String destination) throws Exception {
+    public static void zip(String[] toZip, String destination) throws Exception {
         new ZippingProcess(toZip, destination).startSync();
     }
 
@@ -78,6 +90,14 @@ public class MIO {
 
     public static void download(String url, String toFile) throws Exception {
         new DownloadingProcess(url, toFile).startSync();
+    }
+
+    public static String readFileText(File file) throws Exception {
+        return new TextReadingProcess(file).readText();
+    }
+
+    public static String readFileText(String file) throws Exception {
+        return new TextReadingProcess(new File(file)).readText();
     }
 
     public static String readText(File file) throws Exception {

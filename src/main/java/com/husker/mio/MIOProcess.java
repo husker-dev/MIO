@@ -1,8 +1,11 @@
 package com.husker.mio;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public abstract class MIOProcess<T extends MIOProcess<?>> {
 
@@ -25,10 +28,11 @@ public abstract class MIOProcess<T extends MIOProcess<?>> {
         if(!stopped)
             return (T) this;
         stopped = false;
+        resetSpeedometer();
         beforeStart();
+        invokeEvent();
         thread = new Thread(() -> {
             try {
-                resetSpeedometer();
                 run();
             }catch (InterruptedException ex){
                 // on stop
@@ -143,4 +147,65 @@ public abstract class MIOProcess<T extends MIOProcess<?>> {
             }
         });
     }
+
+    protected static <S extends Closeable> void safeStream(S stream, StreamConsumer<S> event) throws Exception{
+        safeStream(stream, event, true);
+    }
+
+    protected static <S extends Closeable> void safeStream(S stream, StreamConsumer<S> event, boolean close) throws Exception{
+        try{
+            event.accept(stream);
+            if(close)
+                stream.close();
+        } catch (Exception e){
+            if(stream != null)
+                stream.close();
+            throw e;
+        }
+    }
+
+    protected static <S1 extends Closeable, S2 extends Closeable> void safeStream(S1 stream1, S2 stream2, StreamBiConsumer<S1, S2> event) throws Exception{
+        safeStream(stream1, stream2, event, true, true);
+    }
+
+    protected static <S1 extends Closeable, S2 extends Closeable> void safeStream(S1 stream1, S2 stream2, StreamBiConsumer<S1, S2> event, boolean close1, boolean close2) throws Exception{
+        try{
+            event.accept(stream1, stream2);
+            if(close1)
+                stream1.close();
+            if(close2)
+                stream2.close();
+        } catch (Exception ex){
+            if(stream1 != null)
+                stream1.close();
+            if(stream2 != null)
+                stream2.close();
+            throw ex;
+        }
+    }
+
+    protected interface StreamConsumer<A> {
+        void accept(A a) throws Exception;
+    }
+
+    protected interface StreamBiConsumer<A, B> {
+        void accept(A a, B b) throws Exception;
+    }
+
+    protected void copyStreamData(InputStream in, OutputStream os) throws Exception {
+        copyStreamData(in, os, true, true);
+    }
+
+    protected void copyStreamData(InputStream in, OutputStream os, boolean close1, boolean close2) throws Exception {
+        safeStream(in, os, (input, out) -> {
+            byte[] buffer = new byte[getBufferSize()];
+            int length;
+            while ((length = input.read(buffer)) >= 0) {
+                checkForActive();
+                out.write(buffer, 0, length);
+                addCurrent(length);
+            }
+        }, close1, close2);
+    }
+
 }
