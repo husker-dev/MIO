@@ -106,25 +106,8 @@ public class CopyingProcess extends MIOProcess<CopyingProcess> {
             currentFromFile = from;
             currentToFile = to;
 
-            InputStream is = null;
-            OutputStream os = null;
             if(from.isFile()){
-                try {
-                    is = new FileInputStream(from);
-                    os = new FileOutputStream(to);
-                    byte[] buffer = new byte[getBufferSize()];
-                    int length;
-                    while ((length = is.read(buffer)) >= 0) {
-                        checkForActive();
-                        addCurrent(length);
-                        os.write(buffer, 0, length);
-                    }
-                } finally {
-                    if(is != null)
-                        is.close();
-                    if(os != null)
-                        os.close();
-                }
+                copyStreamData(new FileInputStream(from), new FileOutputStream(to));
             }else
                 Files.createDirectories(Paths.get(to.getAbsolutePath()));
         });
