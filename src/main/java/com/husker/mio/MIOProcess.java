@@ -3,9 +3,7 @@ package com.husker.mio;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 public abstract class MIOProcess<T extends MIOProcess<?>> {
 
@@ -19,7 +17,7 @@ public abstract class MIOProcess<T extends MIOProcess<?>> {
     private long current, full;
 
     // Speedometer
-    private long speed, speed_current, speed_lastStart;
+    private long speed, speed_current, speed_lastCheck;
 
     protected abstract void run() throws Exception;
     protected abstract void beforeStart() throws Exception;
@@ -114,6 +112,8 @@ public abstract class MIOProcess<T extends MIOProcess<?>> {
     }
 
     public double getPercent(){
+        if(getFullSize() == 0)
+            return 0;
         return (100.0 / getFullSize()) * getCurrentSize();
     }
 
@@ -123,22 +123,23 @@ public abstract class MIOProcess<T extends MIOProcess<?>> {
 
     protected void addCurrent(long addition){
         current += addition;
+
+        long currentTime = System.currentTimeMillis();
+        if(currentTime - speed_lastCheck > 100){
+            speed_lastCheck = currentTime;
+            speed = speed_current * 10;
+            speed_current = 0;
+        }
         speed_current += addition;
         invokeEvent();
     }
 
     private void resetSpeedometer(){
         speed_current = 0;
-        speed_lastStart = System.currentTimeMillis();
+        speed_lastCheck = System.currentTimeMillis();
     }
 
     protected void invokeEvent(){
-        double deltaTime = System.currentTimeMillis() - speed_lastStart;
-        if(deltaTime > 0)
-            speed = (long)(speed_current / deltaTime);
-        else
-            speed = 0;
-
         listeners.forEach(listener -> {
             try {
                 listener.accept(new ProgressArguments(this));
