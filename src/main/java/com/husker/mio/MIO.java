@@ -4,6 +4,7 @@ import com.husker.mio.processes.*;
 
 import java.io.File;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 
 public class MIO {
@@ -110,5 +111,17 @@ public class MIO {
 
     public static String readText(InputStream inputStream) throws Exception {
         return new TextReadingProcess(inputStream).readText();
+    }
+
+    public static void writeText(String text, File file) throws Exception {
+        new TextWritingProcess(text, file).startSync();
+    }
+
+    public static void writeText(String text, String file) throws Exception {
+        new TextWritingProcess(text, new File(file)).startSync();
+    }
+
+    public static void writeText(String text, OutputStream outputStream) throws Exception {
+        new TextWritingProcess(text, outputStream).startSync();
     }
 }
