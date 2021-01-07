@@ -28,7 +28,7 @@ public class UnzippingProcess extends MIOProcess<UnzippingProcess> {
 
     public UnzippingProcess(File toUnzip){
         this.toUnzip = toUnzip;
-        this.destination = FSUtils.removeExtension(toUnzip);
+        this.destination = new File(toUnzip.getAbsolutePath()).getParentFile();
     }
 
     public UnzippingProcess(String toUnzip, String destination){
@@ -52,8 +52,8 @@ public class UnzippingProcess extends MIOProcess<UnzippingProcess> {
     protected void beforeStart() throws Exception {
         if(toUnzip == null)
             throw new NullPointerException("File to unzip is not specified");
-        if(destination.exists())
-            throw new IOException("Unzipped file is already exist");
+        if(destination == null)
+            throw new NullPointerException("Destination file is not specified");
     }
 
     protected void run() throws Exception {
@@ -67,18 +67,13 @@ public class UnzippingProcess extends MIOProcess<UnzippingProcess> {
             File file = new File(destination + File.separator + entry.getName());
             currentZipEntry = entry;
 
-            if (!entry.isDirectory()) {
-                try(BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file))){
-                    byte[] buffer = new byte[getBufferSize()];
-                    int length;
-                    while ((length = zipIn.read(buffer)) >= 0) {
-                        checkForActive();
-                        bos.write(buffer, 0, length);
-                        addCurrent(length);
-                    }
-                }
-            } else
-                Files.createDirectories(Paths.get(file.getAbsolutePath()));
+            if (!entry.isDirectory())
+                copyStreamData(zipIn, new FileOutputStream(file), false, true);
+            else {
+                try {
+                    Files.createDirectories(Paths.get(file.getAbsolutePath()));
+                }catch (Exception ignored){}
+            }
 
             zipIn.closeEntry();
             entry = zipIn.getNextEntry();

@@ -75,7 +75,7 @@ public class ZippingProcess extends MIOProcess<ZippingProcess> {
             checkForActive();
 
             String relativePath = file.getAbsolutePath().replace(new File(toZip.getAbsolutePath()).getParentFile().getAbsolutePath() + File.separator, "");
-            zipOut.putNextEntry(currentZipEntry = new ZipEntry(relativePath + (file.isDirectory() ? File.separator : "")));
+            zipOut.putNextEntry(currentZipEntry = new ZipEntry(relativePath + (file.isDirectory() ? "/" : "")));
 
             if (file.isFile())
                 copyStreamData(new FileInputStream(file), zipOut, true, false);
