@@ -64,7 +64,7 @@ public class UnzippingProcess extends MIOProcess<UnzippingProcess> {
 
         while (entry != null) {
             checkForActive();
-            File file = new File(destination + File.separator + entry.getName());
+            File file = new File(destination, entry.getName());
             currentZipEntry = entry;
 
             if (!entry.isDirectory())

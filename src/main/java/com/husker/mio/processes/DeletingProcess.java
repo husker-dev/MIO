@@ -47,8 +47,9 @@ public class DeletingProcess extends MIOProcess<DeletingProcess> {
             for(File file : files) {
                 checkForActive();
                 currentFile = file;
+                long size = file.length();
                 FSUtils.delete(file);
-                addCurrent(file.length());
+                addCurrent(size);
             }
             for(File folder : folders)
                 FSUtils.delete(folder);
